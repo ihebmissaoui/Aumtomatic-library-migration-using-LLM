@@ -80,19 +80,22 @@ class SQLUserRepository(UserRepository):
         if user_filter.limit is not None:
             query = query.limit(user_filter.limit)
         return [
-            User(email=user.email, name=user.name, country=user.country, student=user.student, passwword=user.password)
+            User(email=user.email, name=user.name, country=user.country, student=user.student, password=user.password)
             for user in query]
 
     def get_by_email(self, email: str) -> Optional[User]:
         user = self._session.query(UserInDB).filter(UserInDB.email == email).first()
-
+        print (email)
         if user is not None:
+            print(f"returned object : {user.email}")
+
             return User(email=user.email, name=user.name, country=user.country, student=user.student,
-                        passwword=user.password)
+                        password=user.password)
         return None
 
     def save(self,user:User) -> None:
         self._session.add(UserInDB(email=user.email, name=user.name, country=user.country, student=user.student,password=user.password))
+        self._session.commit()
 def create_user_repository() -> Iterator[UserRepository]:
     session = sessionmaker(bind=get_engine(os.getenv("DB_STRING")))()
     user_repository = SQLUserRepository(session)

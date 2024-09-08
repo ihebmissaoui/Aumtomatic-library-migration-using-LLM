@@ -5,7 +5,7 @@ from alembic import context
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
-from api.user_repository import SQL_BASE, get_engine
+from user_repository import SQL_BASE, get_engine
 
 config = context.config
 

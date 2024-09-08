@@ -4,6 +4,7 @@ services:
   api:
     depends_on:
       - db
+      - migrate
     ports:
       - "127.0.0.1:5000:5000"
     build:
@@ -13,6 +14,18 @@ services:
       - ./api:/app
     environment:
       - DB_STRING=postgresql://postgres:test@db:5432/postgres
+
+  migrate:
+    build:
+      dockerfile: ./api/Dockerfile
+      context: .
+    environment:
+      - DB_STRING=postgresql://postgres:test@db:5432/postgres
+    command: sh -c "alembic revision --autogenerate -m 'initial migration' && alembic upgrade head"
+    volumes:
+      - ./api:/app
+    depends_on:
+      - db
 
   db:
     image: postgres:14.5
@@ -24,6 +37,16 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: test
       POSTGRES_DB: postgres
+
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - "127.0.0.1:8080:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    depends_on:
+      - db
 
 volumes:
   postgres-data:

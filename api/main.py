@@ -15,7 +15,7 @@ async def root():
     return RedirectResponse(url="/docs")
 
 
-@app.post("/create/{email}", status_code=HTTP_201_CREATED)
+@app.post("/create/", status_code=HTTP_201_CREATED)
 def create(email: str, password: str,  name: str, country: str,student: bool, user_repository: UserRepository = Depends(create_user_repository)):
     with user_repository as repo:
         repo.save(User(email=email, password=password, name=name, country=country, student=student,))
@@ -27,7 +27,7 @@ def get(email: str, user_repository: UserRepository = Depends(create_user_reposi
         user = repo.get_by_email(email)
         if (not user):
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="User not found")
-
+        return user
 @app.get("/find",response_model=List[User])
 def find (user_filter:UserFilter=Depends(),user_repository:UserRepository = Depends(create_user_repository)):
     with user_repository as repo:
