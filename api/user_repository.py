@@ -23,7 +23,7 @@ class UserInDB(SQL_BASE):
     email = Column(String(length=128), unique=True, nullable=False)
     password = Column(String(length=128), nullable=False)
     name = Column(String(length=128),nullable=True)
-    student = Column(Boolean,nullable=True)
+    status = Column(Boolean,nullable=True)
     country = Column(String(length=128), nullable=True)
 
 
@@ -31,7 +31,7 @@ class User(BaseModel):
     email: str
     name: str
     country: str
-    student: bool
+    status: bool
     password: str
 
 
@@ -80,7 +80,7 @@ class SQLUserRepository(UserRepository):
         if user_filter.limit is not None:
             query = query.limit(user_filter.limit)
         return [
-            User(email=user.email, name=user.name, country=user.country, student=user.student, password=user.password)
+            User(email=user.email, name=user.name, country=user.country, status=user.status, password=user.password)
             for user in query]
 
     def get_by_email(self, email: str) -> Optional[User]:
@@ -89,12 +89,12 @@ class SQLUserRepository(UserRepository):
         if user is not None:
             print(f"returned object : {user.email}")
 
-            return User(email=user.email, name=user.name, country=user.country, student=user.student,
+            return User(email=user.email, name=user.name, country=user.country, status=user.status,
                         password=user.password)
         return None
 
     def save(self,user:User) -> None:
-        self._session.add(UserInDB(email=user.email, name=user.name, country=user.country, student=user.student,password=user.password))
+        self._session.add(UserInDB(email=user.email, name=user.name, country=user.country, status=user.status,password=user.password))
         self._session.commit()
 def create_user_repository() -> Iterator[UserRepository]:
     session = sessionmaker(bind=get_engine(os.getenv("DB_STRING")))()

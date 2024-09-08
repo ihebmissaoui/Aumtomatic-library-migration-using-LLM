@@ -16,9 +16,9 @@ async def root():
 
 
 @app.post("/create/", status_code=HTTP_201_CREATED)
-def create(email: str, password: str,  name: str, country: str,student: bool, user_repository: UserRepository = Depends(create_user_repository)):
+def create(email: str, password: str,  name: str, country: str,status: bool, user_repository: UserRepository = Depends(create_user_repository)):
     with user_repository as repo:
-        repo.save(User(email=email, password=password, name=name, country=country, student=student,))
+        repo.save(User(email=email, password=password, name=name, country=country, status=status,))
 
 
 @app.get("/user/{email}", response_model=Optional[User])
