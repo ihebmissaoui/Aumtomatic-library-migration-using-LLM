@@ -47,6 +47,42 @@ services:
       PGADMIN_DEFAULT_PASSWORD: admin
     depends_on:
       - db
+  pytest:
+    build:
+      dockerfile: ./api/Dockerfile
+      context: .
+    command: sh -c "pytest"
+    volumes:
+      - ./api:/app
+    environment:
 
+        - DB_STRING=postgresql://postgres:test@db:5432/postgres
+        - PYTHONPATH=/app
+
+    depends_on:
+      - db
+      - migrate
+  pylint:
+    build:
+      dockerfile: ./api/Dockerfile
+      context: .
+    command: sh -c "pylint user_repository.py"
+    volumes:
+      - ./api:/app
+    environment:
+      - PYTHONPATH=/app
+    depends_on:
+      - pytest
+  pyright:
+    build:
+      dockerfile: ./api/Dockerfile
+      context: .
+    command: sh -c "pyright user_repository.py"
+    volumes:
+      - ./api:/app
+    environment:
+      - PYTHONPATH=/app
+    depends_on:
+      - pylint
 volumes:
   postgres-data:
