@@ -13,15 +13,15 @@ services:
     volumes:
       - ./api:/app
     environment:
-      - DB_STRING=postgresql://postgres:test@db:5432/postgres
+      - DB_STRING=postgresql+asyncpg://postgres:test@db:5432/postgres
 
   migrate:
     build:
       dockerfile: ./api/Dockerfile
       context: .
     environment:
-      - DB_STRING=postgresql://postgres:test@db:5432/postgres
-    command: sh -c "alembic revision --autogenerate -m 'initial migration' && alembic upgrade head"
+      - DB_STRING=postgresql+asyncpg://postgres:test@db:5432/postgres
+    command: sh -c "alembic revision --autogenerate -m 'first migration' && alembic upgrade head"
     volumes:
       - ./api:/app
     depends_on:
@@ -51,12 +51,11 @@ services:
     build:
       dockerfile: ./api/Dockerfile
       context: .
-    command: sh -c "pytest"
+    command: sh -c " pytest "
     volumes:
       - ./api:/app
     environment:
-
-        - DB_STRING=postgresql://postgres:test@db:5432/postgres
+        - DB_STRING=postgresql+asyncpg://postgres:test@db:5432/postgres
         - PYTHONPATH=/app
 
     depends_on:

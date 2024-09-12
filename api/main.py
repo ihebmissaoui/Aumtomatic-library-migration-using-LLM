@@ -42,8 +42,8 @@ async def create(user_data: User,
         status=user_data.status
     )
 
-    with user_repository as repo:
-        repo.save(user)
+    async with user_repository as repo:
+        await repo.save(user)
 
     return {"message": "User created successfully!"}
 
@@ -57,8 +57,8 @@ async def get(email: str, user_repository: UserRepository = Depends(create_user_
     :param user_repository: Dependency injection for the user repository.
     :return: The user object or raises an HTTP 404 if not found.
     """
-    with user_repository as repo:
-        user = repo.get_by_email(email)
+    async with user_repository as repo:
+        user = await repo.get_by_email(email)
         if not user:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="User not found")
         return user
@@ -74,5 +74,5 @@ async def find(user_filter: UserFilter = Depends(),
     :param user_repository: Dependency injection for the user repository.
     :return: A list of users matching the filter criteria.
     """
-    with user_repository as repo:
-        return repo.get(user_filter)
+    async with user_repository as repo:
+        return await repo.get(user_filter)
