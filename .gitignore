@@ -1,46 +1,30 @@
-# IDE and Editor-specific
-.idea/
-.vscode/
-
-# Python specific
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 *.pdb
-*.egg
 *.egg-info/
-dist/
-build/
-*.db
-
-# Environment files
-.env
+*.venv/
 *.env
-*.venv
-.venv/
-env/
-venv/
 
-# Docker
-*.dockerignore
-Dockerfile
-docker-compose.yml
+# PyCharm
+.idea/
 
 # Logs
 *.log
 
-# Temporary files
-*.tmp
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Misc
+*.bak
 *.swp
 *.swo
-
-# PyCharm-specific
-*.iml
-.idea/
-
-# Ignore everything
-*
-
-# Except for .gitignore itself
-!.gitignore
+*.tmp
+/.idea/
+/.idea/
