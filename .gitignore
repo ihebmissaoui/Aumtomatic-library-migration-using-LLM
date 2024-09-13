@@ -26,3 +26,5 @@ Thumbs.db
 *.swp
 *.swo
 *.tmp
+/.idea/
+/.idea/
