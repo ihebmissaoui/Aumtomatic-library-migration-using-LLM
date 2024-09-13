@@ -1,16 +1,13 @@
 ### START CODE ###
-import asyncio
 import os
 from functools import lru_cache
-from typing import AsyncIterator, Optional, List, Iterator
+from typing import Optional, Iterator, List
 
 from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, Integer, String
-from sqlalchemy.orm import sessionmaker, Session
-import sqlalchemy.ext.asyncio as asyncio_sa
-from sqlalchemy.ext.declarative import declarative_base, declared_attr
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.orm.decl_api import DeclSpec
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, sessionmaker
+from sqlalchemy.orm import sessionmaker, Session, declarative_base, mapped_column
+from sqlalchemy import Integer, String
+from sqlalchemy.future import select
 
 SQL_BASE = declarative_base()
 
@@ -20,36 +17,27 @@ def get_engine(db_string: str):
     """
         Create and cache a SQLAlchemy engine.
         """
-    return create_engine(db_string, pool_pre_ping=True)
+    return create_async_engine(db_string, pool_pre_ping=True)
 
 
 class UserInDB(SQL_BASE):
     """
       SQLAlchemy model representing a user in the database.
       """
-
     __tablename__ = 'user_table'
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    email = Column(String(length=128), unique=True, nullable=False)
-    password = Column(String(length=128), nullable=False)
-    name = Column(String(length=128), nullable=True)
-    status = Column(String, nullable=True)
-    country = Column(String(length=128), nullable=True)
-
-    @declared_attr
-    def __sa_dataclass_metadata__(cls: DeclSpec[SQL_BASE]):
-        return {
-            "schema": "user",
-            "table_name": cls.__tablename__
-        }
+    id = mapped_column(Integer, primary_key=True, autoincrement=True)
+    email = mapped_column(String(length=128), unique=True, nullable=False)
+    password = mapped_column(String(length=128), nullable=False)
+    name = mapped_column(String(length=128), nullable=True)
+    status = mapped_column(String, nullable=True)
+    country = mapped_column(String(length=128), nullable=True)
 
 
 class User(BaseModel):
     """
     Pydantic model for user data validation.
     """
-
     email: str
     name: str
     country: str
@@ -61,7 +49,6 @@ class UserFilter(BaseModel):
     """
       Pydantic model for filtering users by criteria.
       """
-
     limit: Optional[int] = None
     by_name: Optional[str] = None
     by_country: Optional[str] = None
@@ -73,31 +60,27 @@ class UserRepository:
       Interface for user repository operations.
       """
 
-    async def __aenter__(self):
+    def __enter__(self):
         """
              Enter context for the repository.
              """
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_traceback: str) -> None:
-        """
-            Exit context for the repository.
-            """
-        pass
 
-    async def save(self, user: User) -> None:
+
+    def save(self, user: User) -> None:
         """
               Save a user
               """
         raise NotImplementedError()
 
-    async def get_by_email(self, email: str) -> Optional[User]:
+    def get_by_email(self, email: str) -> Optional[User]:
         """
              Retrieve a user by email .
              """
         raise NotImplementedError()
 
-    async def get(self, user_filter: UserFilter) -> List[User]:
+    def get(self, user_filter: UserFilter) -> List[User]:
         """
               Get a list of users based on filtering criteria.
               """
@@ -109,45 +92,19 @@ class SQLUserRepository(UserRepository):
      SQL implementation of the UserRepository interface.
      """
 
-    def __init__(self, async_session):
+    def __init__(self, session: AsyncSession):
         """
               Initialize with a SQLAlchemy session.
               """
-        self._session: Session = async_session
+        self._session: AsyncSession = session
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> 'SQLUserRepository':
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_traceback: str) -> None:
-        if exc_val:
-            print(f"{exc_type}, {exc_val}, {exc_traceback}")
-            try:
-                await self._session.rollback()
-            except Exception as e:
-                print(f"rollback failed: {e}")
-            await self._session.close()
+        if any([exc_val, exc_type, exc_traceback]):
+            await self._session.rollback()
             return
-
-        await self._session.commit()
-        await self._session.close()
-
-    async def save(self, user: User) -> None:
-        """
-              Save a user to the database.
-              """
-        db_user = UserInDB(email=user.email, name=user.name, country=user.country, status=user.status,
-                             password=user.password)
-        self._session.add(db_user)
-
-    async def get_by_email(self, email: str) -> Optional[User]:
-        """
-           Get a user by their email from the database.
-           """
-        user = await self._session.get(UserInDB, {"email": email})
-        if user is not None:
-            return User(email=user.email, name=user.name, country=user.country, status=user.status,
-                        password=user.password)
-        return None
 
     async def get(self, user_filter: UserFilter) -> List[User]:
         """
@@ -170,29 +127,44 @@ class SQLUserRepository(UserRepository):
                  country=user.country, status=user.status, password=user.password)
             for user in users_in_db]
 
+    async def get_by_email(self, email: str) -> Optional[User]:
+        """
+           Get a user by their email from the database.
+           """
+        user = await self._session.query(UserInDB).filter(UserInDB.email == email).first()
+        if user is not None:
+            print(f"returned object : {user.email}")
 
-async def create_user_repository() -> AsyncIterator[UserRepository]:
+            return User(email=user.email, name=user.name, country=user.country, status=user.status,
+                        password=user.password)
+        return None
+
+    async def save(self, user: User) -> None:
+        """
+              Save a user to the database.
+              """
+        user_in_db = UserInDB(email=user.email, name=user.name,
+                                   country=user.country, status=user.status,
+                                   password=user.password)
+        self._session.add(user_in_db)
+        await self._session.commit()
+
+
+def create_user_repository() -> Iterator[UserRepository]:
     """
      Factory function to create and yield a user repository.
      """
-    async_session = sessionmaker(
-        bind=get_engine(os.getenv("DB_STRING")),
-        class_=asyncio_sa.AsyncSession,
-        expire_on_commit=False
-    )
-    session = async_session()
-    user_repository = SQLUserRepository(session)
-
-    try:
-        yield user_repository
-    except Exception:
-        try:
-            await session.rollback()
-        except Exception:
-            pass
-        raise
-    finally:
-        await session.close()
+    async with create_async_engine(os.getenv("DB_STRING")) as engine:
+        async_session = sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)()
+        async with async_session() as session:
+            user_repository = SQLUserRepository(session)
+            try:
+                yield user_repository
+            except Exception:
+                await session.rollback()
+                raise
+            finally:
+                await session.close()
 
 
 class InMemoryUserRepository:
@@ -207,19 +179,19 @@ class InMemoryUserRepository:
             """
         self.data = {}
 
-    async def save(self, user: User) -> None:
+    def save(self, user: User) -> None:
         """
                Save a user to the in-memory repository.
                """
         self.data[user.email] = user
 
-    async def get_by_email(self, email: str) -> Optional[User]:
+    def get_by_email(self, email: str) -> Optional[User]:
         """
                 Retrieve a user by email from the in-memory repository.
                 """
         return self.data.get(email)
 
-    async def get(self, user_filter: UserFilter) -> List[User]:
+    def get(self, user_filter: UserFilter) -> List[User]:
         """
                Retrieve users from the in-memory repository based on filters.
                """
